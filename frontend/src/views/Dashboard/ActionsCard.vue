@@ -3,8 +3,9 @@ import { api } from '@/api';
 import { useModal } from '@/composables/useModal';
 import { useToast } from '@/composables/useToast';
 import { ref } from 'vue';
-const modal = useModal<boolean>()
-const toast = useToast()
+const modal = useModal<boolean>();
+const toast = useToast();
+const loanApplicationForm = ref<HTMLFormElement | null>(null);
 
 const formData = ref({
   applicantName: '',
@@ -26,29 +27,42 @@ const formData = ref({
 });
 
 const submitApplication = async () => {
-  const response = await api.applications.post(formData.value)
-  if (response.success) toast.success('Application Saved Successfully.')
-  else {
-    toast.error('Error occurred while saving application')
-    formData.value.applicantName = '';
-    formData.value.applicantEmail = '';
-    formData.value.applicantMobilePhoneNumber = '';
-    formData.value.applicantAddress = '';
-    formData.value.annualIncomeBeforeTax = 0;
-    formData.value.incomingAddress = '';
-    formData.value.incomingDeposit = 0;
-    formData.value.incomingPrice = 0;
-    formData.value.incomingStampDuty = 0;
-    formData.value.loanAmount = 0;
-    formData.value.loanDuration = 0;
-    formData.value.monthlyExpenses = 0;
-    formData.value.outgoingAddress = '';
-    formData.value.outgoingMortgage = 0;
-    formData.value.outgoingValuation = 0;
-    formData.value.savingsContribution = 0;
+  if (loanApplicationForm.value && loanApplicationForm.value.reportValidity()) {
+    try {
+      const response = await api.applications.post(formData.value);
+      if (response.success) toast.success('Application Saved Successfully. load Amount is:' + response.loanAmount);
+      else {
+        toast.error('Error occurred while saving application');
+      }
+      formData.value.applicantName = '';
+      formData.value.applicantEmail = '';
+      formData.value.applicantMobilePhoneNumber = '';
+      formData.value.applicantAddress = '';
+      formData.value.annualIncomeBeforeTax = 0;
+      formData.value.incomingAddress = '';
+      formData.value.incomingDeposit = 0;
+      formData.value.incomingPrice = 0;
+      formData.value.incomingStampDuty = 0;
+      formData.value.loanAmount = 0;
+      formData.value.loanDuration = 0;
+      formData.value.monthlyExpenses = 0;
+      formData.value.outgoingAddress = '';
+      formData.value.outgoingMortgage = 0;
+      formData.value.outgoingValuation = 0;
+      formData.value.savingsContribution = 0;
+      modal.confirm(false);
+    } catch (error) {
+      toast.error('Form submission failed.');
+    }
+  } else {
+    toast.error('Please fill out all required fields.');
   }
-  modal.confirm(false)
-}
+};
+const triggerFormSubmit = () => {
+  if (loanApplicationForm.value) {
+    loanApplicationForm.value.requestSubmit();
+  }
+};
 </script>
 
 <template>
@@ -57,16 +71,19 @@ const submitApplication = async () => {
       <template #title>Submit loan application</template>
       <BSvgIcon name="dashboard-loan" />
       <template #footer>
-        <BButton variant="primary" label="Submit application" icon-pos="right" icon="pi pi-chevron-right"
-          @click="modal.showModal()" />
+        <BButton
+          variant="primary"
+          label="Submit application"
+          icon-pos="right"
+          icon="pi pi-chevron-right"
+          @click="modal.showModal()"
+        />
       </template>
     </BCard>
 
     <BModal :visible="modal.isVisible.value" :confirm="modal.confirm">
       <template #header>Submit loan application</template>
-
-      <form @submit.prevent="submitApplication()">
-        <!-- Need to change with v-for after change state with object -->
+      <form ref="loanApplicationForm" @submit.prevent="submitApplication">
         <label for="applicant_name">Name</label>
         <BTextInput v-model="formData.applicantName" id="applicant_name" type="text" required />
 
@@ -74,8 +91,12 @@ const submitApplication = async () => {
         <BTextInput v-model="formData.applicantEmail" id="applicant_email" type="email" required />
 
         <label for="applicant_mobile_phone_number">Mobile Phone Number</label>
-        <BTextInput v-model="formData.applicantMobilePhoneNumber" id="applicant_mobile_phone_number" type="tel"
-          required />
+        <BTextInput
+          v-model="formData.applicantMobilePhoneNumber"
+          id="applicant_mobile_phone_number"
+          type="tel"
+          required
+        />
 
         <label for="applicant_address">Applicant Address</label>
         <BTextInput v-model="formData.applicantAddress" id="applicant_address" required />
@@ -107,7 +128,7 @@ const submitApplication = async () => {
       </form>
 
       <template #footer>
-        <BButton type="submit" variant="primary" label="Submit"></BButton>
+        <BButton @click="triggerFormSubmit" variant="primary" label="Submit"></BButton>
         <BButton label="Cancel" @click="modal.confirm(false)"></BButton>
       </template>
     </BModal>
@@ -122,12 +143,12 @@ const submitApplication = async () => {
   align-items: stretch;
   container-type: inline-size;
 
-  >* {
+  > * {
     flex: 1 1 100%;
   }
 
   @container (min-width: 900px) {
-    >* {
+    > * {
       flex: 1 1 calc((100% - 2rem) / 3);
     }
   }
